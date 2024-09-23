@@ -44,7 +44,9 @@ module_path = os.path.abspath('/home/augustine/lfd_ws/src/HIMPVDP/hmpar_former/T
 if module_path not in sys.path:
     sys.path.append(module_path)
 
+##### Import the realtime inference module, can change to LSTM or Transformer
 import realtime_inference_lstm as zed_inference_lstm
+# import realtime_inference as zed_inference
 
 from scipy.spatial.transform import Rotation as R
 import os
@@ -53,10 +55,13 @@ OmegaConf.register_new_resolver("eval", eval, replace=True)
 
 
 DATA_PATH = '/home/augustine/lfd_ws/src/HIMPVDP/universal_manipulation_interface/Data_ICRA/'
+
+##### Logging Parameters
 # DATA_FOLDER = 'UMI/' # change this to use the umi
 DATA_FOLDER = 'PRE_UMI/' # change this to use umi with prediction
 COUNTER = 5
 
+#### Distance Parameters
 DISTANCE_THRESHOLD_MAX = 0.25
 DISTANCE_THRESHOLD_MIN = 0.1
 ALPHA_MAX = 1.0
@@ -114,7 +119,7 @@ def compute_rotation_vector(current_position, current_orientation, target_positi
 @click.option('--camera_reorder', '-cr', default='0')
 @click.option('--vis_camera_idx', default=0, type=int, help="Which RealSense camera to visualize.")
 @click.option('--init_joints', '-j', is_flag=True, default=False, help="Whether to initialize robot joint configuration in the beginning.")
-@click.option('--steps_per_inference', '-si', default=3, type=int, help="Action horizon for inference.")
+@click.option('--steps_per_inference', '-si', default=6, type=int, help="Action horizon for inference.")
 @click.option('--max_duration', '-md', default=2000000, help='Max duration for each epoch in seconds.')
 @click.option('--frequency', '-f', default=10, type=float, help="Control frequency in Hz.")
 @click.option('--command_latency', '-cl', default=0.01, type=float, help="Latency between receiving SapceMouse command to executing on Robot in Sec.")
@@ -181,7 +186,7 @@ def main(input, output, robot_config,
                 init_joints=init_joints,
                 enable_multi_cam_vis=False,
                 # latency
-                camera_obs_latency=0.117, # 0.17 before
+                camera_obs_latency=0.117,
                 # obs
                 camera_obs_horizon=cfg.task.shape_meta.obs.camera0_rgb.horizon,
                 robot_obs_horizon=cfg.task.shape_meta.obs.robot0_eef_pos.horizon,
@@ -190,15 +195,16 @@ def main(input, output, robot_config,
                 fisheye_converter=fisheye_converter,
                 mirror_swap=mirror_swap,
                 # action
-                max_pos_speed=0.09, #0.08 for pre 0.05 for umi
-                max_rot_speed=0.4, #0.3 for pre and 0.1 for umi
+                max_pos_speed=0.05,
+                max_rot_speed=0.3,
                 shm_manager=shm_manager) as env:
             cv2.setNumThreads(2)
             print("Waiting for camera")
             time.sleep(1.0) 
 
-            # Setup Zed Camera
+            ##### Import the realtime inference module, can change to LSTM or Transformer
             zed_prediction = zed_inference_lstm.Realtime_Inference()
+            # zed_prediction = zed_inference.Realtime_Inference()
 
             # load match_dataset
             episode_first_frame_map = dict()
@@ -264,7 +270,7 @@ def main(input, output, robot_config,
                 assert action.shape[-1] == 7 * len(robots_config)
                 del result
 
-            # for plotting
+            ##### For plotting skeleton
             # fig = plt.figure()
             # ax = plt.axes(projection='3d')
             # ax.axes.set_xlim3d(left=0, right=1.5) 
@@ -308,7 +314,6 @@ def main(input, output, robot_config,
                     print("Started!")
                     iter_idx = 0
 
-                    
                     while True:
                         ##################### COMBINATION METHOD
                         # get obs 
@@ -337,11 +342,11 @@ def main(input, output, robot_config,
                                     alpha = ALPHA_MAX * (1 - (distance / DISTANCE_THRESHOLD_MAX-DISTANCE_THRESHOLD_MIN) ** 2)
                             print(f"Alpha: {alpha}")
 
-                        # alpha = 1.0 # for now just use the hand prediction. Delete this line to use the combination method
+                        # alpha = 1.0 # Uncomment this to use the UMI without prediction
                         if alpha == ALPHA_MIN:
                             t_cycle_end = t_start + (iter_idx+1)* dt
                             this_target_poses = np.concatenate((goal_position, goal_rotation_vector), axis=-1)
-                            # env.robots[0].servoL(this_target_poses,0.1) #reach the goal in 0.1 second
+                            env.robots[0].servoL(this_target_poses,0.1)
                             precise_wait(t_cycle_end)
                             iter_idx += 1
                         else: 
@@ -351,7 +356,6 @@ def main(input, output, robot_config,
                             # get obs 
                             obs = env.get_obs()
                             obs_timestamps = obs['timestamp']
-                            # print(f'Obs latency {time.time() - obs_timestamps[-1]}')
 
                             # run inference
                             with torch.no_grad():
@@ -366,7 +370,6 @@ def main(input, output, robot_config,
                                 result = policy.predict_action(obs_dict)
                                 raw_action = result['action_pred'][0].detach().to('cpu').numpy()
                                 action = get_real_umi_action(raw_action, obs, action_pose_repr)
-                                # print('Inference latency:', time.time() - s)
                                 
                             # convert policy action to env actions
                             this_target_poses = action
@@ -389,7 +392,6 @@ def main(input, output, robot_config,
                             else:
                                 this_target_poses = this_target_poses[is_new]
                                 action_timestamps = action_timestamps[is_new]
-                                # print('Deal with timing')
 
                             this_target_poses[:, :3] = this_target_poses[:, :3] * alpha + (1 - alpha) * goal_position
                             this_target_poses[:, 3:6] = this_target_poses[:, 3:6] * alpha + (1 - alpha) * goal_rotation_vector
@@ -399,12 +401,12 @@ def main(input, output, robot_config,
                             timestamps=action_timestamps,
                             compensate_latency=True
                             )
-                            
+
                             # wait for execution
                             precise_wait(t_cycle_end - frame_latency)
                             iter_idx += steps_per_inference
                             
-                        ############## Check For PAUSE
+                        ############## Check For PAUSE - using the pedal for pause and resume
                         press_events = key_counter.get_press_events()
                         for key_stroke in press_events:
                             if key_stroke == KeyCode(char='a'):
@@ -418,21 +420,17 @@ def main(input, output, robot_config,
                                         if key_stroke == KeyCode(char='a'):
                                             flag=True
                                     time.sleep(0.1)
-
-                                # env.robots[0].unpause()
+                                env.robots[0].unpause()
                                 print("Resumed.")
 
-                        # print(f"Submitted {len(this_target_poses)} steps of actions.")
-                        # # execute actions
-                        # env.exec_actions(
-                        #     actions=this_target_poses,
-                        #     timestamps=action_timestamps,
-                        #     compensate_latency=True
-                        # )
+                        # execute actions
+                        env.exec_actions(
+                            actions=this_target_poses,
+                            timestamps=action_timestamps,
+                            compensate_latency=True
+                        )
 
-                        # print(f"Submitted {len(this_target_poses)} steps of actions.")
-
-                        ################# Visualize the body tracking data
+                        ##### Visualize the body tracking data
                         image = copy.copy(np.array(zed_prediction.image))
                         image_points = copy.copy(np.array(zed_prediction.image_points))
                         if image is not None and image_points is not None:
@@ -440,7 +438,7 @@ def main(input, output, robot_config,
                                 image = cv2.circle(image, (int(pt[0]),int(pt[1])), radius=5, color=(255,69,0), thickness=10)
                             cv2.imshow("ZED | 2D View", image)
 
-                        ################ visualize the gopros
+                        ##### Visualize the gopros
                         # episode_id = env.replay_buffer.n_episodes
                         # obs_left_img = obs['camera0_rgb'][-1]
                         # vis_img = np.concatenate([obs_left_img], axis=1)
@@ -458,7 +456,7 @@ def main(input, output, robot_config,
                         # )
                         # cv2.imshow('default', vis_img[...,::-1])
 
-                        ################### Plotting            
+                        ##### Plotting skeleton           
                         # goal_position_base_links = np.array(goal_position_base_links)
                         # ax.plot3D(goal_position_base_links[-1][:,0], goal_position_base_links[-1][:,1], goal_position_base_links[-1][:,2], 'red')
                         # ax.plot3D([0,current_position[0]], [0,current_position[1]], [0,current_position[2]], 'blue')
@@ -471,17 +469,16 @@ def main(input, output, robot_config,
                         for key_stroke in press_events:
                             if key_stroke == KeyCode(char='s'):
                                 # Stop episode
-                                # Hand control back to human
                                 print('Stopped.')
                                 stop_episode = True
                         
+                        ###### Logging data
                         arm_pos_vector.append(arm_position)
                         hand_pos_vector.append(hand_position)
                         pre_hand_pos_vector.append(goal_position)
                         distance_vector.append(distance)
                         duration_vector.append(time.time() - eval_t_start)
 
-                        ########################## Log distance and duration vectors in a file
                         with open(os.path.join(DATA_PATH+DATA_FOLDER, f'arm_pos_log_{COUNTER}.txt'), 'w') as f:
                             for pos in arm_pos_vector:
                                 pos_list = pos.tolist()
@@ -515,10 +512,7 @@ def main(input, output, robot_config,
                     print("Interrupted!")
                     # stop robot.
                     env.end_episode()
-                
                 print("Stopped.")
-
-
 
 # %%
 if __name__ == '__main__':
