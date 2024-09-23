@@ -21,7 +21,7 @@ Train the static handover tasks using UMI framework, instruction is shown at: [U
 
 The video below show the data collection for static handover task.
 
-<img width="50%" src="assets/Training.png">
+<img width="50%" src="assets/Training.gif">
 
 
 ## Human motion prediction data collection
