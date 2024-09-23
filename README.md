@@ -4,17 +4,16 @@
 [Maleen Jayasuriya](https://profiles.uts.edu.au/Gibson.Hu)<sup>2</sup>,
 [Gibson Hu](https://www.linkedin.com/in/maleennj/)<sup>1</sup>,
 [Dikai Liu](https://profiles.uts.edu.au/Dikai.Liu)<sup>1</sup>,
+
 <sup>1</sup>Robotics Institute (RI), University of Technology Sydney,
 <sup>2</sup>Associated to the Collaborative Robotics Lab (CRL), University of Canberra,
 
 <img width="70%" src="assets/Overview.png">
 
-## Installation - Only tested on Ubuntu 20.04
-For Universial Manipulation Interface installation and training please follow the step at: [UMI](https://umi-gripper.github.io/)
-
-For Zed SDK installation please follow the step at: [ZED2](https://www.stereolabs.com/docs/installation/linux)
-
-For Cuda installation in Conda please follow step 9 at: [CUDA In Conda](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/#conda-installation)
+## Installation - Tested on Ubuntu 20.04
+1. Universial Manipulation Interface installation and training please follow the step at: [UMI](https://umi-gripper.github.io/)
+2. Zed SDK installation please follow the step at: [ZED2](https://www.stereolabs.com/docs/installation/linux)
+3. Cuda installation in Conda please follow step 9 at: [CUDA In Conda](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/#conda-installation)
 
 ## VDP training
 Train the static handover tasks using UMI framework, instruction is shown at: [UMI](https://umi-gripper.github.io/)
@@ -44,11 +43,10 @@ Install Jupiter Notebook for training
 ```console
 (umi)$ pip install notebook
 ```
-Preprocess data: hmpar_former/data_process/preprocess_norm_zed.ipynb
-
-Training file: hmpar_former/TF/TF_Train_V3 Maleen.ipynb
-
-Validation file: hmpar_former/TF/TF_Inf V3 Maleen.ipynb
+1. Files required for training 
+    * Preprocess data file: hmpar_former/data_process/preprocess_norm_zed.ipynb
+    * Training file: hmpar_former/TF/TF_Train_V3 Maleen.ipynb
+    * Validation file: hmpar_former/TF/TF_Inf V3 Maleen.ipynb
 
 Note: Change the process_data directory path and model path to your computer directory path.
 
@@ -61,11 +59,11 @@ Grant permission to the HDMI capture card.
 
 Launch evaluation script
 ```console
-(umi)$ python3eval_real.py --robot_config=example/eval_robots_config.yaml -i ckpt/latest_block_from_people.ckpt -o data pick_block_from_people
+(umi)$ python eval_real.py --robot_config=example/eval_robots_config.yaml -i ckpt/latest_block_from_people.ckpt -o data pick_block_from_people
 ```
 Note: There is an option to switch between using LSTM and our Transformer human motion prediction network in the script file.
 
 
 ## Video experiments
-Please find the project video at: [HIMPVDP](https://www.youtube.com/watch?v=VYSy_hbDPFc)
+Please find the full project video at: [HIMPVDP](https://www.youtube.com/watch?v=VYSy_hbDPFc)
 
