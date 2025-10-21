@@ -28,7 +28,7 @@ class PoseTracker:
         self.init_params = sl.InitParameters()
         self.init_params.camera_resolution = sl.RESOLUTION.HD1080  # Use HD1080 video mode
         self.init_params.coordinate_units = sl.UNIT.METER          # Set coordinate units
-        self.init_params.depth_mode = sl.DEPTH_MODE.ULTRA
+        self.init_params.depth_mode = sl.DEPTH_MODE.NEURAL
         self.init_params.coordinate_system = sl.COORDINATE_SYSTEM.RIGHT_HANDED_Y_UP
 
         # Open the camera
@@ -141,16 +141,16 @@ class PoseTracker:
                         self.dataset['acceleration'] = np.concatenate((self.dataset['acceleration'], self.world_points_acc.reshape(1,6,3)), axis=0)
 
                         # Update 2D view
-                        # image_left_ocv = self.image.get_data()
-                        # for pt in self.image_points:
-                        #     image_left_ocv = cv2.circle(image_left_ocv, (int(pt[0]),int(pt[1])), radius=5, color=(255,69,0), thickness=10)
-                        # cv2.imshow("ZED | 2D View", image_left_ocv)
+                        image_left_ocv = self.image.get_data()
+                        for pt in self.image_points:
+                            image_left_ocv = cv2.circle(image_left_ocv, (int(pt[0]),int(pt[1])), radius=5, color=(255,69,0), thickness=10)
+                        cv2.imshow("ZED | 2D View", image_left_ocv)
 
-                        # # Q for quit
-                        # key = cv2.waitKey(self.key_wait)
-                        # if key == 113: # for 'q' key
-                        #     print("Exiting...")
-                        #     break
+                        # Q for quit
+                        key = cv2.waitKey(self.key_wait)
+                        if key == 113: # for 'q' key
+                            print("Exiting...")
+                            break
 
                     if self.t1-self.t2 != 0:
                         FPS=1/(self.t1-self.t2)
