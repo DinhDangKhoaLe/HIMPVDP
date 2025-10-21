@@ -45,8 +45,8 @@ if module_path not in sys.path:
     sys.path.append(module_path)
 
 ##### Import the realtime inference module, can change to LSTM or Transformer
-import realtime_inference_lstm as zed_inference_lstm
-# import realtime_inference as zed_inference
+# import realtime_inference_lstm as zed_inference_lstm
+import realtime_inference as zed_inference
 
 from scipy.spatial.transform import Rotation as R
 import os
@@ -195,16 +195,16 @@ def main(input, output, robot_config,
                 fisheye_converter=fisheye_converter,
                 mirror_swap=mirror_swap,
                 # action
-                max_pos_speed=0.05,
-                max_rot_speed=0.3,
+                max_pos_speed=0.02,
+                max_rot_speed=0.1,
                 shm_manager=shm_manager) as env:
             cv2.setNumThreads(2)
             print("Waiting for camera")
             time.sleep(1.0) 
 
             ##### Import the realtime inference module, can change to LSTM or Transformer
-            zed_prediction = zed_inference_lstm.Realtime_Inference()
-            # zed_prediction = zed_inference.Realtime_Inference()
+            # zed_prediction = zed_inference_lstm.Realtime_Inference()
+            zed_prediction = zed_inference.Realtime_Inference()
 
             # load match_dataset
             episode_first_frame_map = dict()
@@ -319,6 +319,7 @@ def main(input, output, robot_config,
                         # get obs 
                         obs = env.get_obs()
                         obs_timestamps = obs['timestamp']
+                        # print("Gripper width: ", obs['robot0_gripper_width'][-1])
 
                         # get current pose and future pose from hand prediction [x,y,z]
                         arm_position = obs[f'robot{robot_id}_eef_pos'][-1]
@@ -342,7 +343,7 @@ def main(input, output, robot_config,
                                     alpha = ALPHA_MAX * (1 - (distance / DISTANCE_THRESHOLD_MAX-DISTANCE_THRESHOLD_MIN) ** 2)
                             print(f"Alpha: {alpha}")
 
-                        # alpha = 1.0 # Uncomment this to use the UMI without prediction
+                        alpha = 1.0 # Uncomment this to use the UMI without prediction
                         if alpha == ALPHA_MIN:
                             t_cycle_end = t_start + (iter_idx+1)* dt
                             this_target_poses = np.concatenate((goal_position, goal_rotation_vector), axis=-1)
@@ -393,14 +394,14 @@ def main(input, output, robot_config,
                                 this_target_poses = this_target_poses[is_new]
                                 action_timestamps = action_timestamps[is_new]
 
-                            this_target_poses[:, :3] = this_target_poses[:, :3] * alpha + (1 - alpha) * goal_position
-                            this_target_poses[:, 3:6] = this_target_poses[:, 3:6] * alpha + (1 - alpha) * goal_rotation_vector
+                            # this_target_poses[:, :3] = this_target_poses[:, :3] * alpha + (1 - alpha) * goal_position
+                            # this_target_poses[:, 3:6] = this_target_poses[:, 3:6] * alpha + (1 - alpha) * goal_rotation_vector
 
-                            env.exec_actions(
-                            actions=this_target_poses,
-                            timestamps=action_timestamps,
-                            compensate_latency=True
-                            )
+                            # env.exec_actions(
+                            # actions=this_target_poses,
+                            # timestamps=action_timestamps,
+                            # compensate_latency=True
+                            # )
 
                             # wait for execution
                             precise_wait(t_cycle_end - frame_latency)
@@ -424,11 +425,11 @@ def main(input, output, robot_config,
                                 print("Resumed.")
 
                         # execute actions
-                        env.exec_actions(
-                            actions=this_target_poses,
-                            timestamps=action_timestamps,
-                            compensate_latency=True
-                        )
+                        # env.exec_actions(
+                        #     actions=this_target_poses,
+                        #     timestamps=action_timestamps,
+                        #     compensate_latency=True
+                        # )
 
                         ##### Visualize the body tracking data
                         image = copy.copy(np.array(zed_prediction.image))
@@ -439,29 +440,29 @@ def main(input, output, robot_config,
                             cv2.imshow("ZED | 2D View", image)
 
                         ##### Visualize the gopros
-                        # episode_id = env.replay_buffer.n_episodes
-                        # obs_left_img = obs['camera0_rgb'][-1]
-                        # vis_img = np.concatenate([obs_left_img], axis=1)
-                        # text = 'Episode: {}, Time: {:.1f}'.format(
-                        #     episode_id, time.monotonic() - t_start
-                        # )
-                        # cv2.putText(
-                        #     vis_img,
-                        #     text,
-                        #     (10,20),
-                        #     fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                        #     fontScale=0.5,
-                        #     thickness=1,
-                        #     color=(255,255,255)
-                        # )
-                        # cv2.imshow('default', vis_img[...,::-1])
+                        episode_id = env.replay_buffer.n_episodes
+                        obs_left_img = obs['camera0_rgb'][-1]
+                        vis_img = np.concatenate([obs_left_img], axis=1)
+                        text = 'Episode: {}, Time: {:.1f}'.format(
+                            episode_id, time.monotonic() - t_start
+                        )
+                        cv2.putText(
+                            vis_img,
+                            text,
+                            (10,20),
+                            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                            fontScale=0.5,
+                            thickness=1,
+                            color=(255,255,255)
+                        )
+                        cv2.imshow('default', vis_img[...,::-1])
 
                         ##### Plotting skeleton           
-                        # goal_position_base_links = np.array(goal_position_base_links)
-                        # ax.plot3D(goal_position_base_links[-1][:,0], goal_position_base_links[-1][:,1], goal_position_base_links[-1][:,2], 'red')
-                        # ax.plot3D([0,current_position[0]], [0,current_position[1]], [0,current_position[2]], 'blue')
-                        # plt.pause(0.005)
-                        # plt.draw()
+                        goal_position_base_links = np.array(goal_position_base_links)
+                        ax.plot3D(goal_position_base_links[-1][:,0], goal_position_base_links[-1][:,1], goal_position_base_links[-1][:,2], 'red')
+                        ax.plot3D([0,current_position[0]], [0,current_position[1]], [0,current_position[2]], 'blue')
+                        plt.pause(0.005)
+                        plt.draw()
 
                         _ = cv2.pollKey()
                         press_events = key_counter.get_press_events()
@@ -473,32 +474,32 @@ def main(input, output, robot_config,
                                 stop_episode = True
                         
                         ###### Logging data
-                        arm_pos_vector.append(arm_position)
-                        hand_pos_vector.append(hand_position)
-                        pre_hand_pos_vector.append(goal_position)
-                        distance_vector.append(distance)
-                        duration_vector.append(time.time() - eval_t_start)
+                        # arm_pos_vector.append(arm_position)
+                        # hand_pos_vector.append(hand_position)
+                        # pre_hand_pos_vector.append(goal_position)
+                        # distance_vector.append(distance)
+                        # duration_vector.append(time.time() - eval_t_start)
 
-                        with open(os.path.join(DATA_PATH+DATA_FOLDER, f'arm_pos_log_{COUNTER}.txt'), 'w') as f:
-                            for pos in arm_pos_vector:
-                                pos_list = pos.tolist()
-                                f.write(f"Arm_pos: {pos_list}\n")
+                        # with open(os.path.join(DATA_PATH+DATA_FOLDER, f'arm_pos_log_{COUNTER}.txt'), 'w') as f:
+                        #     for pos in arm_pos_vector:
+                        #         pos_list = pos.tolist()
+                        #         f.write(f"Arm_pos: {pos_list}\n")
 
-                        with open(os.path.join(DATA_PATH+DATA_FOLDER, f'hand_pos_log_{COUNTER}.txt'), 'w') as f:
-                            for pos in hand_pos_vector:
-                                pos_list = pos.tolist()
-                                f.write(f"Hand_pos: {pos_list}\n")
+                        # with open(os.path.join(DATA_PATH+DATA_FOLDER, f'hand_pos_log_{COUNTER}.txt'), 'w') as f:
+                        #     for pos in hand_pos_vector:
+                        #         pos_list = pos.tolist()
+                        #         f.write(f"Hand_pos: {pos_list}\n")
                         
-                        with open(os.path.join(DATA_PATH+DATA_FOLDER, f'pre_hand_pos_log_{COUNTER}.txt'), 'w') as f:
-                            for pos in pre_hand_pos_vector:
-                                pos_list = pos.tolist()
-                                f.write(f"Hand_pos: {pos_list}\n")
+                        # with open(os.path.join(DATA_PATH+DATA_FOLDER, f'pre_hand_pos_log_{COUNTER}.txt'), 'w') as f:
+                        #     for pos in pre_hand_pos_vector:
+                        #         pos_list = pos.tolist()
+                        #         f.write(f"Hand_pos: {pos_list}\n")
 
-                        with open(os.path.join(DATA_PATH+DATA_FOLDER, f'distance_log_{COUNTER}.txt'), 'w') as f:
-                            f.write(f"Distance: {distance_vector}")
+                        # with open(os.path.join(DATA_PATH+DATA_FOLDER, f'distance_log_{COUNTER}.txt'), 'w') as f:
+                        #     f.write(f"Distance: {distance_vector}")
 
-                        with open(os.path.join(DATA_PATH+DATA_FOLDER, f'duration_log_{COUNTER}.txt'), 'w') as f:
-                            f.write(f"Duration: {duration_vector}")
+                        # with open(os.path.join(DATA_PATH+DATA_FOLDER, f'duration_log_{COUNTER}.txt'), 'w') as f:
+                        #     f.write(f"Duration: {duration_vector}")
 
                         t_since_start = time.time() - eval_t_start
                         if t_since_start > max_duration:

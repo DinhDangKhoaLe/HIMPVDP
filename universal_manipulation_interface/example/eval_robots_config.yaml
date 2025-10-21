@@ -3,16 +3,16 @@
   # comment out robot #1 if only using 1 arm
   "robots": [
     {
-      "robot_type": "ur10",
+      "robot_type": "ur10e",
 
 
-      "robot_ip": "192.168.0.102",
+      "robot_ip": "192.168.10.111",
       # "robot_ip": "10.0.0.2",  #ur simulation
 
-      "initial_joints": [-40,-83,-101,-4,108,4.3], 
+      # "initial_joints": [-40,-83,-101,-4,108,4.3], 
       
       # "robot_obs_latency": 0.0001, "robot_action_latency": 0.3, "tcp_offset": 0.235,
-      "robot_obs_latency": 0.0001, "robot_action_latency": 0.1, "tcp_offset": 0.235,
+      "robot_obs_latency": 0.0001, "robot_action_latency": 0.1, "tcp_offset": 0.245,
       # table height for finger-table collision avoidance
       # -inf to disable
       # "height_threshold": -0.024,
